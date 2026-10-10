@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>SEJAC ERP</title>
+    <style>
+      :root {
+        --fondo: #f8fafc;
+        --texto: #0f172a;
+        --suave: #64748b;
+        --tarjeta: #ffffff;
+        --borde: #e2e8f0;
+        --boton: #0f172a;
+        --boton-texto: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fondo: #0f172a;
+          --texto: #f1f5f9;
+          --suave: #94a3b8;
+          --tarjeta: #1e293b;
+          --borde: #334155;
+          --boton: #f1f5f9;
+          --boton-texto: #0f172a;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: var(--fondo);
+        color: var(--texto);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 380px;
+        padding: 28px 24px;
+        border: 1px solid var(--borde);
+        border-radius: 14px;
+        background: var(--tarjeta);
+        text-align: center;
+      }
+      h1 { margin: 0; font-size: 20px; }
+      .sub { margin: 4px 0 20px; font-size: 13px; color: var(--suave); }
+      #estado { margin: 0 0 16px; font-size: 15px; line-height: 1.45; }
+      .detalle { margin: 12px 0 0; font-size: 12px; color: var(--suave); }
+      a.boton, button {
+        display: inline-block;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--boton);
+        color: var(--boton-texto);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SEJAC</h1>
+      <p class="sub">Sociedad Expositora de Jalisco A.C.</p>
+      <p id="estado">Buscando el sistema…</p>
+      <a id="entrar" class="boton" hidden>Entrar</a>
+      <button id="reintentar" hidden>Reintentar</button>
+      <p id="detalle" class="detalle"></p>
+    </main>
+    <script>
+      // El supervisor publica en url.json el enlace del túnel vigente. Antes de redirigir se
+      // comprueba que el sistema responda, para no mandar a nadie a un enlace muerto.
+      const estado = document.getElementById("estado");
+      const entrar = document.getElementById("entrar");
+      const reintentar = document.getElementById("reintentar");
+      const detalle = document.getElementById("detalle");
+
+      const hora = (iso) =>
+        new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+
+      async function buscar() {
+        estado.textContent = "Buscando el sistema…";
+        entrar.hidden = true;
+        reintentar.hidden = true;
+        detalle.textContent = "";
+        let datos;
+        try {
+          const r = await fetch("url.json?t=" + Date.now(), { cache: "no-store" });
+          datos = await r.json();
+        } catch {
+          estado.textContent = "No se pudo leer el enlace del sistema. Revisa tu conexión.";
+          reintentar.hidden = false;
+          return;
+        }
+        if (!datos.url) {
+          estado.textContent = "SEJAC está apagado en este momento.";
+          if (datos.actualizado) detalle.textContent = "Última actualización: " + hora(datos.actualizado);
+          reintentar.hidden = false;
+          return;
+        }
+        try {
+          const control = new AbortController();
+          const limite = setTimeout(() => control.abort(), 10000);
+          const salud = await fetch(datos.url + "/api/salud", { cache: "no-store", signal: control.signal });
+          clearTimeout(limite);
+          if (!salud.ok) throw new Error("sin respuesta");
+          estado.textContent = "Abriendo SEJAC…";
+          entrar.href = datos.url + "/";
+          entrar.hidden = false;
+          location.replace(datos.url + "/");
+        } catch {
+          estado.textContent =
+            "SEJAC no responde ahora: la computadora que lo sirve está apagada o reiniciándose. Intenta en unos minutos.";
+          detalle.textContent = "Enlace publicado: " + hora(datos.actualizado);
+          reintentar.hidden = false;
+        }
+      }
+
+      reintentar.addEventListener("click", buscar);
+      buscar();
+    </script>
+  </body>
+</html>
