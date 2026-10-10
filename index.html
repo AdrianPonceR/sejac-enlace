@@ -83,6 +83,9 @@
       const reintentar = document.getElementById("reintentar");
       const detalle = document.getElementById("detalle");
 
+      // "#/encuesta/abc" abre esa página del sistema; sin ruta (o con algo raro) va al inicio.
+      const destino = /^#\/[A-Za-z0-9_\-\/]*$/.test(location.hash) ? location.hash.slice(1) : "/";
+
       const hora = (iso) =>
         new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 
@@ -113,9 +116,9 @@
           clearTimeout(limite);
           if (!salud.ok) throw new Error("sin respuesta");
           estado.textContent = "Abriendo SEJAC…";
-          entrar.href = datos.url + "/";
+          entrar.href = datos.url + destino;
           entrar.hidden = false;
-          location.replace(datos.url + "/");
+          location.replace(datos.url + destino);
         } catch {
           estado.textContent =
             "SEJAC no responde ahora: la computadora que lo sirve está apagada o reiniciándose. Intenta en unos minutos.";
